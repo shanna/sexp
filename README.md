@@ -21,7 +21,7 @@ go get bitbucket.org/shanehanna/csexp
 
 ## TODO
 
-* TODO: Examples in docs.
+* Examples in docs.
 * Would be nice to handle regular s-expressions as well.
 * The Parser expression scope code is awkward.
 * The Parser atom types suck. `type Bytes []byte; type Expression []Atomizer` ?
