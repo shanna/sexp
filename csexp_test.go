@@ -40,3 +40,8 @@ func TestLexer(t *testing.T) {
   assert.Equal(t, itemEOF, item.typ)
 }
 
+func TestUnmarshal(t *testing.T) {
+  tree := Unmarshal([]byte("(3:foo)"))
+  // Unmarshal([]byte("(3:foo3:bar(3:baz))"), &tree)
+  assert.Equal(t, "(3:foo)", string(tree.Bytes()))
+}

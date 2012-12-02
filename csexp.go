@@ -1,6 +1,7 @@
 package csexp
 
 import (
+  "bytes"
   "fmt"
   "regexp"
   "strconv"
@@ -112,3 +113,50 @@ func lexCsexp(l *lexer) stateFn {
   }
   return l.errorf("Expected expression.")
 }
+
+type Atomizer interface {
+  Bytes() ([]byte)
+}
+
+type Atom struct {
+  Value []byte
+}
+
+type Expression struct {
+  Values []Atomizer
+}
+
+func (a *Atom) Bytes() ([]byte) {
+  return []byte(fmt.Sprintf("%d:%s", len(a.Value), a.Value))
+}
+
+func (s *Expression) Bytes() ([]byte) {
+  st := new(bytes.Buffer)
+  st.WriteString("(")
+  for _, exp := range s.Values {
+    st.Write(exp.Bytes())
+  }
+  st.WriteString(")")
+  return st.Bytes()
+}
+
+func Unmarshal(data []byte) *Expression {
+  l := lex(data)
+  s := []*Expression{&Expression{}}
+
+  for item := l.next(); item.typ != itemEOF; item = l.next() {
+    switch item.typ {
+    case itemBracketLeft:
+      s = append(s, &Expression{})
+      s[len(s)-2].Values = append(s[len(s)-2].Values, s[len(s)-1])
+    case itemBracketRight:
+      s = s[:len(s)-1]
+    case itemBytes:
+      s[len(s)-1].Values = append(s[len(s)-1].Values, &Atom{Value: item.val})
+    default:
+      panic("unreachable")
+    }
+  }
+  return s[0].Values[0].(*Expression)
+}
+
