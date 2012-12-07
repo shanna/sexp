@@ -3,6 +3,8 @@ package csexp
 import (
 	"bytes"
 	"fmt"
+	"strconv"
+	"strings"
 )
 
 type Kind int
@@ -15,68 +17,96 @@ const (
 type Atomizer interface {
 	Kind() Kind
 	Bytes() []byte
+	String() string
 }
 
-// Bytes Atom
 type Bytes struct {
+	// Encoding []byte
 	Value []byte
 }
 
-func NewBytes(value []byte) Bytes {
-	return Bytes{value}
+func NewBytes(data []byte) *Bytes {
+	return &Bytes{data}
 }
 
-func (a *Bytes) Bytes() []byte {
-	return []byte(fmt.Sprintf("%d:%s", len(a.Value), a.Value))
-}
-
-func (a *Bytes) Kind() Kind {
+func (bytes *Bytes) Kind() Kind {
 	return AtomBytes
 }
 
-// (Sub)Expression Atom
-type Expression struct {
-	Value []Atomizer
+func (bytes *Bytes) Bytes() []byte {
+	return []byte(fmt.Sprintf("%d:%s", len(bytes.Value), bytes.Value))
 }
 
-func NewExpression(values ...Atomizer) Expression {
-	return Expression{values}
+func (bytes *Bytes) String() string {
+	return strconv.Quote(string(bytes.Value))
 }
 
-func (a *Expression) Bytes() []byte {
-	st := new(bytes.Buffer)
-	st.WriteString("(")
-	for _, atom := range a.Value {
-		st.Write(atom.Bytes())
-	}
-	st.WriteString(")")
-	return st.Bytes()
+type Expression []Atomizer
+
+func NewExpression(atoms ...interface{}) *Expression {
+	e := &Expression{}
+	e.Push(atoms...)
+	return e
 }
 
 func (a *Expression) Kind() Kind {
 	return AtomExpression
 }
 
-// Parse a Canonical S-expression from a byte slice.
-func Parse(data []byte) *Expression {
-	l := newLexer(data)
-	s := []*Expression{&Expression{}}
+func (expression *Expression) Bytes() []byte {
+	exp := new(bytes.Buffer)
+	exp.WriteString("(")
+	for _, csexp := range *expression {
+		val := csexp.Bytes()
+		exp.Write(val)
+	}
+	exp.WriteString(")")
+	return exp.Bytes()
+}
 
-	for item := l.next(); item.typ != itemEOF; item = l.next() {
+func (expression *Expression) String() string {
+	exp := new(bytes.Buffer)
+	exp.WriteString("(")
+	atoms := []string{}
+	for _, csexp := range *expression {
+		atoms = append(atoms, csexp.String())
+	}
+	exp.WriteString(strings.Join(atoms, " "))
+	exp.WriteString(")")
+	return exp.String()
+}
+
+// Convenience method to push Bytes atoms or cast with fmt.Sprint() into Bytes and push.
+func (expression *Expression) Push(data ...interface{}) {
+	for _, d := range data {
+		if atomizer, ok := d.(Atomizer); ok {
+			*expression = append(*expression, atomizer)
+		} else if bytes, ok := d.([]byte); ok {
+			*expression = append(*expression, NewBytes(bytes))
+		} else {
+			*expression = append(*expression, NewBytes([]byte(fmt.Sprint(d))))
+		}
+	}
+}
+
+// TODO: Stack stuff is ugly.
+func Parse(data []byte) (*Expression, error) {
+	lexer := newLexer(data)
+	stack := []*Expression{&Expression{}}
+
+	for item := lexer.next(); item.typ != itemEOF; item = lexer.next() {
 		switch item.typ {
 		case itemBracketLeft:
-			e := NewExpression()
-			s = append(s, &e)
-			s[len(s)-2].Value = append(s[len(s)-2].Value, s[len(s)-1])
+			ex := NewExpression()
+			stack[len(stack)-1].Push(ex)
+			stack = append(stack, ex)
 		case itemBracketRight:
-			s = s[:len(s)-1]
+			stack = stack[:len(stack)-1]
 		case itemBytes:
-			b := NewBytes(item.val)
-			s[len(s)-1].Value = append(s[len(s)-1].Value, &b)
+			stack[len(stack)-1].Push(item.val)
 		default:
 			panic("unreachable")
 		}
 	}
-
-	return s[0].Value[0].(*Expression)
+	return (*stack[0])[0].(*Expression), nil
 }
