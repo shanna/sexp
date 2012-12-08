@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
-	"strings"
 )
 
 type Kind int
@@ -16,8 +15,7 @@ const (
 
 type Atomizer interface {
 	Kind() Kind
-	Bytes() []byte
-	String() string
+	MarshalSEXP(canonical bool) []byte
 }
 
 type Bytes struct {
@@ -33,12 +31,11 @@ func (bytes *Bytes) Kind() Kind {
 	return AtomBytes
 }
 
-func (bytes *Bytes) Bytes() []byte {
-	return []byte(fmt.Sprintf("%d:%s", len(bytes.Value), bytes.Value))
-}
-
-func (bytes *Bytes) String() string {
-	return strconv.Quote(string(bytes.Value))
+func (bytes *Bytes) MarshalSEXP(canonical bool) []byte {
+	if canonical {
+		return []byte(fmt.Sprintf("%d:%s", len(bytes.Value), bytes.Value))
+	}
+	return []byte(strconv.Quote(string(bytes.Value)))
 }
 
 type Expression []Atomizer
@@ -53,27 +50,24 @@ func (a *Expression) Kind() Kind {
 	return AtomExpression
 }
 
-func (expression *Expression) Bytes() []byte {
+func (expression *Expression) MarshalSEXP(canonical bool) []byte {
 	exp := new(bytes.Buffer)
 	exp.WriteString("(")
-	for _, sexp := range *expression {
-		val := sexp.Bytes()
-		exp.Write(val)
+
+	// WTB Ternary.
+	separator := " "
+	if canonical {
+		separator = ""
 	}
+
+	atoms := [][]byte{}
+	for _, sexp := range *expression {
+		atoms = append(atoms, sexp.MarshalSEXP(canonical))
+	}
+	exp.Write(bytes.Join(atoms, []byte(separator)))
+
 	exp.WriteString(")")
 	return exp.Bytes()
-}
-
-func (expression *Expression) String() string {
-	exp := new(bytes.Buffer)
-	exp.WriteString("(")
-	atoms := []string{}
-	for _, sexp := range *expression {
-		atoms = append(atoms, sexp.String())
-	}
-	exp.WriteString(strings.Join(atoms, " "))
-	exp.WriteString(")")
-	return exp.String()
 }
 
 // Convenience method to push Bytes atoms or cast with fmt.Sprint() into Bytes and push.
