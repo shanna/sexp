@@ -39,4 +39,3 @@ func TestLexer(t *testing.T) {
 	item = l.Next()
 	assert.Equal(t, ItemEOF, item.Type)
 }
-

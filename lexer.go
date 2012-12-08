@@ -16,9 +16,9 @@ type ItemType int
 
 const (
 	ItemError        ItemType = iota
-	ItemBracketLeft  // (
-	ItemBracketRight // )
-	ItemBytes        // []byte
+	ItemBracketLeft           // (
+	ItemBracketRight          // )
+	ItemBytes                 // []byte
 	ItemEOF
 )
 
