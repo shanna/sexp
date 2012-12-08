@@ -1,4 +1,4 @@
-package csexp
+package sexp
 
 import (
 	"fmt"

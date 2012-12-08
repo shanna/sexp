@@ -1,11 +1,11 @@
-Go(lang) Canonical S-expression Parser
-======================================
+Go(lang) S-expression Parser
+============================
 
-* [source](https://bitbucket.org/shanehanna/csexp)
+* [source](https://bitbucket.org/shanehanna/sexp)
 
 ## Description.
 
-A Go canonical S-expression parser.
+A Go S-expression parser.
 
 ## Installation
 
@@ -16,15 +16,13 @@ A Go canonical S-expression parser.
 ### Install
 
 ```
-go get bitbucket.org/shanehanna/csexp
+go get bitbucket.org/shanehanna/sexp
 ```
 
 ## TODO
 
 * Examples in docs.
-* Would be nice to handle regular s-expressions as well.
 * The Parser expression scope code is awkward.
-* The Parser atom types suck. `type Bytes []byte; type Expression []Atomizer` ?
 
 ## Contributing
 

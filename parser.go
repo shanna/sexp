@@ -1,4 +1,4 @@
-package csexp
+package sexp
 
 import (
 	"bytes"
@@ -56,8 +56,8 @@ func (a *Expression) Kind() Kind {
 func (expression *Expression) Bytes() []byte {
 	exp := new(bytes.Buffer)
 	exp.WriteString("(")
-	for _, csexp := range *expression {
-		val := csexp.Bytes()
+	for _, sexp := range *expression {
+		val := sexp.Bytes()
 		exp.Write(val)
 	}
 	exp.WriteString(")")
@@ -68,8 +68,8 @@ func (expression *Expression) String() string {
 	exp := new(bytes.Buffer)
 	exp.WriteString("(")
 	atoms := []string{}
-	for _, csexp := range *expression {
-		atoms = append(atoms, csexp.String())
+	for _, sexp := range *expression {
+		atoms = append(atoms, sexp.String())
 	}
 	exp.WriteString(strings.Join(atoms, " "))
 	exp.WriteString(")")
