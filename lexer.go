@@ -118,12 +118,15 @@ func lex(l *lexer) stateFn {
 		l.emit(ItemToken)
 		return lex
 	}
-	return l.errorf(
-		"Unexpected character '%s' at byte %d near '%s'.",
-		l.input[l.pos:l.pos+1],
-		l.pos,
-		l.input[l.pos:l.pos+10], // Check index in bounds. There must be a function for this.
-	)
+
+  // TODO: Read number of runes. Reading 10 bytes may leave the last unprintable.
+  near := l.input[l.pos:]
+  if len(near) < 10 {
+    near = near[:len(near)]
+  } else {
+    near = near[:10]
+  }
+	return l.errorf("Unexpected byte at %d near '%s'.", l.pos, near)
 }
 
 /*
