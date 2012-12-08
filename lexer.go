@@ -6,20 +6,20 @@ import (
 	"strconv"
 )
 
-type item struct {
-	typ itemType
-	pos int
-	val []byte
+type Item struct {
+	Type     ItemType
+	Position int
+	Value    []byte
 }
 
-type itemType int
+type ItemType int
 
 const (
-	itemError        itemType = iota
-	itemBracketLeft           // (
-	itemBracketRight          // )
-	itemBytes                 // []byte
-	itemEOF
+	ItemError        ItemType = iota
+	ItemBracketLeft  // (
+	ItemBracketRight // )
+	ItemBytes        // []byte
+	ItemEOF
 )
 
 var (
@@ -32,18 +32,18 @@ type stateFn func(*lexer) stateFn
 
 type lexer struct {
 	input   []byte
-	items   chan item
+	items   chan Item
 	start   int
 	pos     int
 	state   stateFn
 	matches [][]byte
 }
 
-func (l *lexer) emit(t itemType) {
-	l.items <- item{t, l.start, l.input[l.start:l.pos]}
+func (l *lexer) emit(t ItemType) {
+	l.items <- Item{t, l.start, l.input[l.start:l.pos]}
 }
 
-func (l *lexer) next() item {
+func (l *lexer) Next() Item {
 	item := <-l.items
 	return item
 }
@@ -72,36 +72,36 @@ func (l *lexer) run() {
 }
 
 func (l *lexer) errorf(format string, args ...interface{}) stateFn {
-	l.items <- item{itemError, l.start, []byte(fmt.Sprintf(format, args...))}
+	l.items <- Item{ItemError, l.start, []byte(fmt.Sprintf(format, args...))}
 	return nil
 }
 
 func lexCanonical(l *lexer) stateFn {
 	if l.pos >= len(l.input) {
-		l.emit(itemEOF)
+		l.emit(ItemEOF)
 		return nil
 	}
 	if l.scan(reBracketLeft) {
-		l.emit(itemBracketLeft)
+		l.emit(ItemBracketLeft)
 		return lexCanonical
 	}
 	if l.scan(reBracketRight) {
-		l.emit(itemBracketRight)
+		l.emit(ItemBracketRight)
 		return lexCanonical
 	}
 	if l.scan(reBytesLength) {
 		bytes, _ := strconv.ParseInt(string(l.matches[1]), 10, 64)
 		l.start = l.pos
 		l.pos += int(bytes)
-		l.emit(itemBytes)
+		l.emit(ItemBytes)
 
 		return lexCanonical
 	}
 	return l.errorf("Expected expression.") // TODO: Better error.
 }
 
-func newLexer(input []byte) *lexer {
-	l := &lexer{input: input, items: make(chan item)}
+func NewLexer(input []byte) *lexer {
+	l := &lexer{input: input, items: make(chan Item)}
 	go l.run()
 	return l
 }

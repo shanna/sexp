@@ -6,36 +6,37 @@ import (
 )
 
 func TestLexer(t *testing.T) {
-	l := newLexer([]byte("(3:foo3:bar(3:baz))"))
+	l := NewLexer([]byte("(3:foo3:bar(3:baz))"))
 
-	item := l.next()
-	assert.Equal(t, []byte("("), item.val)
-	assert.Equal(t, itemBracketLeft, item.typ)
+	item := l.Next()
+	assert.Equal(t, []byte("("), item.Value)
+	assert.Equal(t, ItemBracketLeft, item.Type)
 
-	item = l.next()
-	assert.Equal(t, "foo", string(item.val))
-	assert.Equal(t, itemBytes, item.typ)
+	item = l.Next()
+	assert.Equal(t, "foo", string(item.Value))
+	assert.Equal(t, ItemBytes, item.Type)
 
-	item = l.next()
-	assert.Equal(t, "bar", string(item.val))
-	assert.Equal(t, itemBytes, item.typ)
+	item = l.Next()
+	assert.Equal(t, "bar", string(item.Value))
+	assert.Equal(t, ItemBytes, item.Type)
 
-	item = l.next()
-	assert.Equal(t, "(", string(item.val))
-	assert.Equal(t, itemBracketLeft, item.typ)
+	item = l.Next()
+	assert.Equal(t, "(", string(item.Value))
+	assert.Equal(t, ItemBracketLeft, item.Type)
 
-	item = l.next()
-	assert.Equal(t, "baz", string(item.val))
-	assert.Equal(t, itemBytes, item.typ)
+	item = l.Next()
+	assert.Equal(t, "baz", string(item.Value))
+	assert.Equal(t, ItemBytes, item.Type)
 
-	item = l.next()
-	assert.Equal(t, ")", string(item.val))
-	assert.Equal(t, itemBracketRight, item.typ)
+	item = l.Next()
+	assert.Equal(t, ")", string(item.Value))
+	assert.Equal(t, ItemBracketRight, item.Type)
 
-	item = l.next()
-	assert.Equal(t, ")", string(item.val))
-	assert.Equal(t, itemBracketRight, item.typ)
+	item = l.Next()
+	assert.Equal(t, ")", string(item.Value))
+	assert.Equal(t, ItemBracketRight, item.Type)
 
-	item = l.next()
-	assert.Equal(t, itemEOF, item.typ)
+	item = l.Next()
+	assert.Equal(t, ItemEOF, item.Type)
 }
+

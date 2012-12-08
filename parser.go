@@ -91,19 +91,19 @@ func (expression *Expression) Push(data ...interface{}) {
 
 // TODO: Stack stuff is ugly.
 func Parse(data []byte) (*Expression, error) {
-	lexer := newLexer(data)
+	lexer := NewLexer(data)
 	stack := []*Expression{&Expression{}}
 
-	for item := lexer.next(); item.typ != itemEOF; item = lexer.next() {
-		switch item.typ {
-		case itemBracketLeft:
+	for item := lexer.Next(); item.Type != ItemEOF; item = lexer.Next() {
+		switch item.Type {
+		case ItemBracketLeft:
 			ex := NewExpression()
 			stack[len(stack)-1].Push(ex)
 			stack = append(stack, ex)
-		case itemBracketRight:
+		case ItemBracketRight:
 			stack = stack[:len(stack)-1]
-		case itemBytes:
-			stack[len(stack)-1].Push(item.val)
+		case ItemBytes:
+			stack[len(stack)-1].Push(item.Value)
 		default:
 			panic("unreachable")
 		}
