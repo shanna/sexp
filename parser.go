@@ -102,7 +102,7 @@ func Parse(data []byte) (*Expression, error) {
 			stack = append(stack, ex)
 		case ItemBracketRight:
 			stack = stack[:len(stack)-1]
-		case ItemBytes:
+		case ItemToken, ItemQuote, ItemVerbatim:
 			stack[len(stack)-1].Push(item.Value)
 		default:
 			panic("unreachable")

@@ -18,14 +18,26 @@ const (
 	ItemError        ItemType = iota
 	ItemBracketLeft           // (
 	ItemBracketRight          // )
-	ItemBytes                 // []byte
+	ItemToken                 // abc        Token.
+	ItemQuote                 // "abc"      Quoted string. May also include length 3"abc"
+	ItemVerbatim              // 3:abc      Length prefixed "verbatim" encoding.
+	// ItemHex                // #616263#   Hexidecimal string.
+	// ItemBase64             // {MzphYmM=} Base64 of the verbatim encoding "3:abc"
+	// ItemBase64Octet        // |YWJj|     Base64 encoding of the octet-string "abc"
 	ItemEOF
 )
 
 var (
 	reBracketLeft  = regexp.MustCompile(`^\(`)
 	reBracketRight = regexp.MustCompile(`^\)`)
-	reBytesLength  = regexp.MustCompile(`^(\d+):`)
+	reWhitespace   = regexp.MustCompile(`^\s+`)
+	reVerbatim     = regexp.MustCompile(`^(\d+):`)
+	reQuote        = regexp.MustCompile(`^(\d+)?"((?:[^\\"]|\\.)*)"`)
+
+	// Strict(er) R.Rivset 1997 draft token + unicode letter support (hello 1997).
+	// reToken     = regexp.MustCompile(`^[\p{L}][\p{L}\p{N}\-./_:*+=]+`)
+	// Instead a token can be anything including '(', ')' and ' ' so long as you escape them:
+	reToken = regexp.MustCompile(`^(?:[^\\ ()]|\\.)+`)
 )
 
 type stateFn func(*lexer) stateFn
@@ -65,7 +77,7 @@ func (l *lexer) match(re *regexp.Regexp) bool {
 }
 
 func (l *lexer) run() {
-	for l.state = lexCanonical; l.state != nil; {
+	for l.state = lex; l.state != nil; {
 		l.state = l.state(l)
 	}
 	close(l.items)
@@ -76,30 +88,52 @@ func (l *lexer) errorf(format string, args ...interface{}) stateFn {
 	return nil
 }
 
-func lexCanonical(l *lexer) stateFn {
-	if l.pos >= len(l.input) {
+func lex(l *lexer) stateFn {
+	// The order is important here, reToken must come last because it'll match reVerbatim and
+	// reQuote atoms as well.
+	switch {
+	case l.pos >= len(l.input):
 		l.emit(ItemEOF)
 		return nil
-	}
-	if l.scan(reBracketLeft) {
+	case l.scan(reWhitespace):
+		return lex
+	case l.scan(reBracketLeft):
 		l.emit(ItemBracketLeft)
-		return lexCanonical
-	}
-	if l.scan(reBracketRight) {
+		return lex
+	case l.scan(reBracketRight):
 		l.emit(ItemBracketRight)
-		return lexCanonical
-	}
-	if l.scan(reBytesLength) {
+		return lex
+	case l.scan(reQuote):
+		// TODO: errorf if length exists and doesn't line up with quote length.
+		// Don't include quotes in Value.
+		l.items <- Item{ItemQuote, l.start, []byte(l.matches[2])}
+		return lex
+	case l.scan(reVerbatim):
 		bytes, _ := strconv.ParseInt(string(l.matches[1]), 10, 64)
 		l.start = l.pos
 		l.pos += int(bytes)
-		l.emit(ItemBytes)
-
-		return lexCanonical
+		l.emit(ItemVerbatim)
+		return lex
+	case l.scan(reToken):
+		l.emit(ItemToken)
+		return lex
 	}
-	return l.errorf("Expected expression.") // TODO: Better error.
+	return l.errorf(
+		"Unexpected character '%s' at byte %d near '%s'.",
+		l.input[l.pos:l.pos+1],
+		l.pos,
+		l.input[l.pos:l.pos+10], // Check index in bounds. There must be a function for this.
+	)
 }
 
+/*
+  Lex S-Expressions.
+
+  See http://people.csail.mit.edu/rivest/Sexp.txt
+
+  * Unlike the R.Rivest 1997 draft tokens will match any unicode letters.
+  * Canonical S-Expressions may have spaces between atoms which isn't strictly correct.
+*/
 func NewLexer(input []byte) *lexer {
 	l := &lexer{input: input, items: make(chan Item)}
 	go l.run()
