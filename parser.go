@@ -3,104 +3,87 @@ package sexp
 import (
 	"bytes"
 	"fmt"
+	"regexp"
 	"strconv"
 )
 
-type Kind int
-
-const (
-	AtomBytes Kind = iota
-	AtomExpression
+var (
+	// Strict(er) R.Rivset 1997 draft token + unicode letter support (hello 1997).
+	// Strings and bytes matching this get marshaled as a token in non-canonical form.
+	reMarshalToken = regexp.MustCompile(`^[\p{L}][\p{L}\p{N}\-./_:*+=]+$`)
 )
 
-type Atomizer interface {
-	Kind() Kind
-	MarshalSEXP(canonical bool) []byte
-}
-
-type Bytes struct {
-	// Encoding []byte
-	Value []byte
-}
-
-func NewBytes(data []byte) *Bytes {
-	return &Bytes{data}
-}
-
-func (bytes *Bytes) Kind() Kind {
-	return AtomBytes
-}
-
-func (bytes *Bytes) MarshalSEXP(canonical bool) []byte {
-	if canonical {
-		return []byte(fmt.Sprintf("%d:%s", len(bytes.Value), bytes.Value))
+func Unmarshal(data []byte) ([]interface{}, error) {
+	l := NewLexer(data)
+	exp, err := unmarshal(l)
+	if err != nil {
+		return nil, err
 	}
-	return []byte(strconv.Quote(string(bytes.Value)))
+	return exp.([]interface{})[0].([]interface{}), nil
 }
 
-type Expression []Atomizer
-
-func NewExpression(atoms ...interface{}) *Expression {
-	e := &Expression{}
-	e.Push(atoms...)
-	return e
+func Marshal(data []interface{}, canonical bool) ([]byte, error) {
+	return marshal(data, canonical)
 }
 
-func (a *Expression) Kind() Kind {
-	return AtomExpression
+// The iterative way did my head in so I've gone recursive for now.
+func unmarshal(l *lexer) (interface{}, error) {
+	exp := make([]interface{}, 0)
+	for item := l.Next(); item.Type != ItemEOF; item = l.Next() {
+		switch item.Type {
+		case ItemBracketLeft:
+			subexp, err := unmarshal(l)
+			if err != nil {
+				return nil, err
+			}
+			exp = append(exp, subexp)
+		case ItemBracketRight:
+			return exp, nil
+		case ItemToken, ItemQuote, ItemVerbatim:
+			exp = append(exp, item.Value)
+		default:
+			panic("Unreachable.")
+		}
+	}
+	return exp, nil
 }
 
-func (expression *Expression) MarshalSEXP(canonical bool) []byte {
+func marshal(data interface{}, canonical bool) ([]byte, error) {
+	if d, ok := data.([]interface{}); ok {
+		return marshal_slice(d, canonical)
+	} else if d, ok := data.(string); ok {
+		return marshal_bytes([]byte(d), canonical)
+	} else if d, ok := data.([]byte); ok {
+		return marshal_bytes(d, canonical)
+	}
+	return marshal_bytes([]byte(fmt.Sprintf("%v", data)), canonical)
+}
+
+func marshal_slice(data []interface{}, canonical bool) ([]byte, error) {
 	exp := new(bytes.Buffer)
 	exp.WriteString("(")
-
-	// WTB Ternary.
 	separator := " "
 	if canonical {
 		separator = ""
 	}
-
 	atoms := [][]byte{}
-	for _, sexp := range *expression {
-		atoms = append(atoms, sexp.MarshalSEXP(canonical))
+	for _, sexp := range data {
+		atom, err := marshal(sexp, canonical)
+		if err != nil {
+			return atom, err
+		}
+		atoms = append(atoms, atom)
 	}
 	exp.Write(bytes.Join(atoms, []byte(separator)))
-
 	exp.WriteString(")")
-	return exp.Bytes()
+	return exp.Bytes(), nil
 }
 
-// Convenience method to push Bytes atoms or cast with fmt.Sprint() into Bytes and push.
-func (expression *Expression) Push(data ...interface{}) {
-	for _, d := range data {
-		if atomizer, ok := d.(Atomizer); ok {
-			*expression = append(*expression, atomizer)
-		} else if bytes, ok := d.([]byte); ok {
-			*expression = append(*expression, NewBytes(bytes))
-		} else {
-			*expression = append(*expression, NewBytes([]byte(fmt.Sprint(d))))
-		}
+func marshal_bytes(data []byte, canonical bool) ([]byte, error) {
+	if canonical {
+		return []byte(fmt.Sprintf("%d:%s", len(data), data)), nil
+	} else if reMarshalToken.Match(data) {
+		return data, nil
 	}
-}
-
-// TODO: Stack stuff is ugly.
-func Parse(data []byte) (*Expression, error) {
-	lexer := NewLexer(data)
-	stack := []*Expression{&Expression{}}
-
-	for item := lexer.Next(); item.Type != ItemEOF; item = lexer.Next() {
-		switch item.Type {
-		case ItemBracketLeft:
-			ex := NewExpression()
-			stack[len(stack)-1].Push(ex)
-			stack = append(stack, ex)
-		case ItemBracketRight:
-			stack = stack[:len(stack)-1]
-		case ItemToken, ItemQuote, ItemVerbatim:
-			stack[len(stack)-1].Push(item.Value)
-		default:
-			panic("unreachable")
-		}
-	}
-	return (*stack[0])[0].(*Expression), nil
+	return []byte(strconv.Quote(string(data))), nil
 }
