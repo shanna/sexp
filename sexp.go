@@ -25,6 +25,14 @@ func cast(v interface{}) *Sexp {
 	return &Sexp{v}
 }
 
+func (s *Sexp) Encode(canonical bool) ([]byte, error) {
+	a, err := s.Array()
+	if err != nil {
+		return nil, err
+	}
+	return Marshal(a, canonical)
+}
+
 func (s *Sexp) Bytes() ([]byte, error) {
 	if b, ok := (s.data).([]byte); ok {
 		return b, nil
