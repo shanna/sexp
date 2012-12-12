@@ -30,11 +30,11 @@ func TestUnmarshal(t *testing.T) {
 func TestMarshal(t *testing.T) {
 	// Casting.
 	exp := make([]interface{}, 0)
-	exp = append(exp, "foo", []byte("bar"), 1, "quote non tokens")
+	exp = append(exp, "foo", []byte("bar"), 1, "quote non tokens", true)
 
 	bytes, err := Marshal(exp, false)
 	assert.Equal(t, nil, err)
-	assert.Equal(t, `(foo bar "1" "quote non tokens")`, string(bytes))
+	assert.Equal(t, `(foo bar "1" "quote non tokens" true)`, string(bytes))
 
 	// Subexpressions.
 	subexp := make([]interface{}, 0)
@@ -51,11 +51,11 @@ func TestMarshal(t *testing.T) {
 func TestMarshalCanonical(t *testing.T) {
 	// Casting.
 	exp := make([]interface{}, 0)
-	exp = append(exp, "foo", []byte("bar"), 1, "quote non tokens")
+	exp = append(exp, "foo", []byte("bar"), 1, "quote non tokens", true)
 
 	bytes, err := Marshal(exp, true)
 	assert.Equal(t, nil, err)
-	assert.Equal(t, `(3:foo3:bar1:116:quote non tokens)`, string(bytes))
+	assert.Equal(t, `(3:foo3:bar1:116:quote non tokens4:true)`, string(bytes))
 
 	// Subexpressions.
 	subexp := make([]interface{}, 0)
