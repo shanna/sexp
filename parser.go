@@ -22,7 +22,7 @@ func Unmarshal(data []byte) ([]interface{}, error) {
 	return exp.([]interface{})[0].([]interface{}), nil
 }
 
-func Marshal(data []interface{}, canonical bool) ([]byte, error) {
+func Marshal(data interface{}, canonical bool) ([]byte, error) {
 	return marshal(data, canonical)
 }
 
