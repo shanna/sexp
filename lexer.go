@@ -36,16 +36,16 @@ func (item Item) String() string {
 }
 
 const (
-	ItemError        ItemType = iota
-	ItemBracketLeft           // (
-	ItemBracketRight          // )
-	ItemToken                 // abc        Token.
-	ItemQuote                 // "abc"      Quoted string. May also include length 3"abc"
-	ItemVerbatim              // 3:abc      Length prefixed "verbatim" encoding.
+	ItemEOF ItemType = iota
+	ItemError
+	ItemBracketLeft  // (
+	ItemBracketRight // )
+	ItemToken        // abc        Token.
+	ItemQuote        // "abc"      Quoted string. May also include length 3"abc"
+	ItemVerbatim     // 3:abc      Length prefixed "verbatim" encoding.
 	// ItemHex                // #616263#   Hexidecimal string.
 	// ItemBase64             // {MzphYmM=} Base64 of the verbatim encoding "3:abc"
 	// ItemBase64Octet        // |YWJj|     Base64 encoding of the octet-string "abc"
-	ItemEOF
 )
 
 var (
