@@ -154,14 +154,19 @@ func lex(l *lexer) stateFn {
 		return lex
 	}
 
-	// TODO: Read number of runes. Reading 10 bytes may leave the last unprintable.
-	near := l.input[l.pos:]
-	if len(near) < 10 {
-		near = near[:len(near)]
-	} else {
-		near = near[:10]
+	return l.errorf("Unexpected byte at %d near '%s'.", l.pos, l.near())
+}
+
+func (l *lexer) near() []byte {
+	from := l.pos - 5
+	if from < 0 {
+		from = 0
 	}
-	return l.errorf("Unexpected byte at %d near '%s'.", l.pos, near)
+	near := l.input[from:]
+	if len(near) < 10 {
+		return near[:len(near)]
+	}
+	return near[:10]
 }
 
 /*
