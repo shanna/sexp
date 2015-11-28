@@ -70,10 +70,24 @@ type lexer struct {
 	pos     int
 	state   stateFn
 	matches [][]byte
+	parens  int
 }
 
 func (l *lexer) emit(t ItemType) {
-	l.items <- Item{t, l.start, l.input[l.start:l.pos]}
+	switch t {
+	case ItemBracketLeft:
+		l.parens++
+	case ItemBracketRight:
+		l.parens--
+	}
+
+	if l.parens > 0 && t == ItemEOF {
+		l.items <- Item{ItemError, l.start, []byte(fmt.Sprintf("Unexpected EOF, %d '(' unmatched", l.parens))}
+	} else if l.parens < 0 {
+		l.items <- Item{ItemError, l.start, []byte("Unmatched )")}
+	} else {
+		l.items <- Item{t, l.start, l.input[l.start:l.pos]}
+	}
 }
 
 func (l *lexer) Next() Item {
