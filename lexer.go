@@ -14,6 +14,27 @@ type Item struct {
 
 type ItemType int
 
+func (item Item) String() string {
+	switch item.Type {
+	case ItemError:
+		return fmt.Sprintf("Error(%v)", item.Value)
+	case ItemBracketLeft:
+		return "("
+	case ItemBracketRight:
+		return ")"
+	case ItemToken:
+		return fmt.Sprintf("Token(%v)", item.Value)
+	case ItemQuote:
+		return fmt.Sprintf("Quote(%v)", item.Value)
+	case ItemVerbatim:
+		return fmt.Sprintf("Verbatim(%v)", item.Value)
+	case ItemEOF:
+		return "EOF"
+	default:
+		return "Unknown(%v)"
+	}
+}
+
 const (
 	ItemError        ItemType = iota
 	ItemBracketLeft           // (
